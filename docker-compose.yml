@@ -1,0 +1,59 @@
+# docker-compose.yml
+
+services:
+  # FastAPI Service
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: gateway_api
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - api_cache:/app/.cache
+    # configurazione DNS
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      app_net:
+        ipv4_address: 10.0.0.2
+
+# Nginx Service
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    container_name: api_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      app_net:
+        ipv4_address: 10.0.0.3
+    user: root  # Temporaneamente usa root per debug
+
+volumes:
+  api_cache:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  app_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.0.0/8
+          gateway: 10.0.0.1
+      # configurazione DNS per la rete
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
